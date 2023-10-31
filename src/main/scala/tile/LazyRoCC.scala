@@ -398,11 +398,19 @@ class OpcodeSet(val opcodes: Seq[UInt]) {
 }
 
 object OpcodeSet {
-  def custom0 = new OpcodeSet(Seq("b0001011".U))
-  def custom1 = new OpcodeSet(Seq("b0101011".U))
-  def custom2 = new OpcodeSet(Seq("b1011011".U))
-  def custom3 = new OpcodeSet(Seq("b1111011".U))
-  def all = custom0 | custom1 | custom2 | custom3
+  def custom0 = new OpcodeSet(Seq("b00010110".U)) //Cat(original custom0, 1'b0)
+  def custom1 = new OpcodeSet(Seq("b00010111".U)) //Cat(original custom0, 1'b1)
+  def custom2 = new OpcodeSet(Seq("b01010110".U))
+  def custom3 = new OpcodeSet(Seq("b01010111".U)) //Cat(original custom1, 1'b1)
+ 
+  def custom4 = new OpcodeSet(Seq("b10110110".U))
+  def custom5 = new OpcodeSet(Seq("b10110111".U)) //Cat(original custom2, 1'b1)
+ 
+  def custom6 = new OpcodeSet(Seq("b11110110".U)) 
+  def custom7 = new OpcodeSet(Seq("b11110111".U)) //Cat(original custom3, 1'b1)
+ 
+  def all = custom0 | custom1 | custom2 | custom3 |
+            custom4 | custom5 | custom6 | custom7
 }
 
 class RoccCommandRouter(opcodes: Seq[OpcodeSet])(implicit p: Parameters)
@@ -415,9 +423,10 @@ class RoccCommandRouter(opcodes: Seq[OpcodeSet])(implicit p: Parameters)
 
   val cmd = Queue(io.in)
   val cmdReadys = io.out.zip(opcodes).map { case (out, opcode) =>
-    val me = opcode.matches(cmd.bits.inst.opcode)
+    val me = opcode.matches(Cat(cmd.bits.inst.opcode, cmd.bits.inst.funct(6)))
     out.valid := cmd.valid && me
     out.bits := cmd.bits
+    out.bits.inst.funct := cmd.bits.inst.funct(5,0)
     out.ready && me
   }
   cmd.ready := cmdReadys.reduce(_ || _)
